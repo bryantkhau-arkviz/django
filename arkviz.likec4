@@ -1,143 +1,211 @@
 model {
-  projUser = actor 'End User' {
-    description 'A visitor or registered user of the Django-powered website'
+  projWebUser = actor 'Web User' {
+    description 'Developer or end user accessing a Django-powered web application'
   }
 
-  projAdmin = actor 'Staff Administrator' {
-    description 'Users with access to the Django Admin interface for data management'
+  projAppDeveloper = actor 'Application Developer' {
+    description 'Builds Django apps, runs management commands, and configures settings'
   }
 
-  projDeveloper = actor 'Software Developer' {
-    description 'Developers building, testing, and deploying the Django application'
+  projOpsEngineer = actor 'Ops Engineer' {
+    description 'Deploys Django via WSGI or ASGI servers and monitors runtime behavior'
   }
 
-  projDjangoSystem = system 'Django Application Framework' {
-    description 'A high-level Python web framework that encourages rapid development and clean design'
+  projCiMaintainer = actor 'CI Maintainer' {
+    description 'Maintains GitHub Actions workflows for tests, coverage, docs, and quality checks'
+  }
 
-    projWebHandler = service 'Web Handler' {
-      technology 'Python, ASGI/WSGI'
-      description 'The core request/response processor handling HTTP traffic'
+  projGitHubActions = external 'GitHub Actions' {
+    technology 'GitHub Actions'
+    description 'CI/CD automation platform executing repository workflows'
+  }
 
-      projMiddleware = component 'Middleware Chain' {
-        technology 'Python'
-        description 'Hooks for security, sessions, and CSRF protection'
-      }
+  projPostgreSql = external 'PostgreSQL Server' {
+    technology 'PostgreSQL'
+    description 'Relational database backend used by Django in test and production scenarios'
+  }
 
-      projUrlResolver = component 'URL Resolver' {
-        technology 'Python'
-        description 'Maps incoming URL patterns to specific view functions or classes'
-      }
+  projPostGis = external 'PostGIS Database' {
+    technology 'PostgreSQL + PostGIS'
+    description 'Geospatial database backend used by GeoDjango tests'
+  }
 
-      projViewProcessor = component 'View Layer' {
-        technology 'Python'
-        description 'Encapsulates business logic and processes requests to return responses'
-      }
+  projSphinx = external 'Sphinx Toolchain' {
+    technology 'Sphinx, sphinxcontrib-spelling, sphinx-lint'
+    description 'Documentation build and lint ecosystem'
+  }
 
-      projTemplateEngine = component 'Template Engine' {
-        technology 'Django Templates, Jinja2'
-        description 'Renders dynamic HTML content using context data'
-      }
+  projNodeTooling = external 'Node.js Test Tooling' {
+    technology 'Node.js, Grunt, QUnit, Puppeteer, ESLint'
+    description 'JavaScript tooling used for frontend/static asset tests'
+  }
 
-      projORM = component 'Object-Relational Mapper (ORM)' {
-        technology 'Python, sqlparse'
-        description 'Maps Python models to database tables and handles query generation'
-      }
+  projDjangoOrg = system 'Django Framework' {
+    description 'Python web framework providing request handling, ORM, templating, middleware, admin, auth, and management tooling'
 
-      projAuthSystem = component 'Auth System' {
-        technology 'Python, argon2/bcrypt'
-        description 'Manages user authentication, permissions, and groups'
-      }
-
-      projMiddleware -> projUrlResolver 'passes sanitized request'
-      projUrlResolver -> projViewProcessor 'routes to'
-      projViewProcessor -> projAuthSystem 'validates permissions'
-      projViewProcessor -> projORM 'queries data'
-      projViewProcessor -> projTemplateEngine 'renders UI with'
+    projHttpRuntime = service 'HTTP Runtime Layer' {
+      technology 'Python 3.12+, WSGI, ASGI'
+      description 'Entry points and handlers for synchronous WSGI and asynchronous ASGI request processing'
     }
 
-    projAdminUI = frontend 'Admin Interface' {
-      technology 'Python, JavaScript, CSS'
-      description 'Automatically generated administrative interface for model management'
+    projCoreKernel = service 'Core Framework Kernel' {
+      technology 'Python'
+      description 'Core services including URL routing, middleware execution, HTTP abstractions, signals, checks, and management command infrastructure'
     }
 
-    projTaskWorker = service 'Background Worker' {
-      technology 'Python (django.tasks)'
-      description 'Processes asynchronous tasks and background jobs'
+    projTemplateEngine = service 'Template and View Rendering' {
+      technology 'Django Templates, Jinja2 integration'
+      description 'Template backends, loaders, context processing, generic views, and response rendering'
     }
 
-    projDatabase = database 'Primary Database' {
-      technology 'PostgreSQL/PostGIS, SQLite'
-      description 'Relational data store for application models and content types'
+    projContribSuite = service 'Contrib Applications Suite' {
+      technology 'django.contrib'
+      description 'Reusable framework apps such as admin, auth, sessions, messages, sites, staticfiles, sitemaps, contenttypes, and GIS extensions'
     }
 
-    projCacheLayer = cache 'Cache Backend' {
-      technology 'Redis, Memcached'
-      description 'Stores session data and fragments of rendered pages'
+    projOrmLayer = service 'ORM and Migrations Engine' {
+      technology 'Django ORM, django.db.migrations, sqlparse'
+      description 'Model layer, query construction, database backend abstraction, schema migration planning, and execution'
     }
 
-    projStaticStorage = service 'Static/Media Storage' {
-      technology 'Whitenoise, S3, Local Filesystem'
-      description 'Serves CSS, JavaScript, images, and user-uploaded files'
+    projCacheIntegration = integration 'Cache Backend Integration' {
+      technology 'django.core.cache'
+      description 'Unified cache API integrated with middleware and template tags across pluggable backends'
     }
 
-    projWebHandler -> projDatabase 'reads/writes data' {
+    projTaskApi = integration 'Task Backend Interface' {
+      technology 'django.tasks'
+      description 'Abstraction layer for task execution backends including immediate and dummy implementations'
+    }
+
+    projCliTool = service 'Management CLI' {
+      technology 'django-admin, django.core.management'
+      description 'Command-line interface for project lifecycle operations and administrative tasks'
+    }
+
+    projStaticAssets = frontend 'Admin and Static Asset Frontend' {
+      technology 'HTML, CSS, JavaScript, staticfiles'
+      description 'Admin UI assets and static file serving pipeline for browser-based interfaces'
+    }
+
+    projFrameworkStateDb = database 'Application Data Store' {
+      technology 'SQLite or PostgreSQL via Django DB backends'
+      description 'Logical persistence target for framework-managed models, sessions, auth data, and application content'
+    }
+
+    projHttpRuntime -> projCoreKernel 'forwards HTTP requests for processing' {
+      technology 'WSGI/ASGI call interface'
+    }
+    projCoreKernel -> projTemplateEngine 'renders responses with templates and view logic' {
+      technology 'Python API calls'
+    }
+    projCoreKernel -> projContribSuite 'invokes installed contrib app features' {
+      technology 'Python module integration'
+    }
+    projCoreKernel -> projOrmLayer 'executes model queries and transactions' {
+      technology 'ORM APIs'
+    }
+    projCoreKernel -> projCacheIntegration 'uses cache lookups and invalidation' {
+      technology 'Cache API'
+    }
+    projCoreKernel -> projTaskApi 'dispatches background task calls through backend interface' {
+      technology 'Python API calls'
+    }
+    projContribSuite -> projOrmLayer 'persists auth, session, site, and admin metadata' {
+      technology 'ORM queries'
+    }
+    projTemplateEngine -> projStaticAssets 'serves and references static assets in rendered pages' {
+      technology 'HTTP static asset paths'
+    }
+    projOrmLayer -> projFrameworkStateDb 'reads and writes relational data' {
       technology 'SQL'
     }
-    projWebHandler -> projCacheLayer 'manages sessions/cache'
-    projAdminUI -> projWebHandler 'uses core logic'
-    projTaskWorker -> projDatabase 'processes records'
-    projWebHandler -> projTaskWorker 'enqueues jobs'
+    projCliTool -> projCoreKernel 'loads settings and executes framework commands' {
+      technology 'Python command execution'
+    }
+    projCliTool -> projOrmLayer 'creates and applies migrations' {
+      technology 'Migration executor'
+    }
+
+    projRequestHandler = component 'Request Handler Pipeline' {
+      description 'Builds request/response flow, executes middleware chain, and dispatches to views'
+    }
+
+    projUrlResolver = component 'URL Resolver' {
+      description 'Resolves URL patterns and maps requests to view callables'
+    }
+
+    projMiddlewareChain = component 'Middleware Chain Executor' {
+      description 'Applies security, CSRF, session, locale, and other middleware around request handling'
+    }
+
+    projSignalBus = component 'Signal Dispatcher' {
+      description 'Publishes lifecycle events such as request started and model signals'
+    }
+
+    projSystemChecks = component 'System Check Framework' {
+      description 'Runs configuration and runtime checks for databases, templates, caches, and URLs'
+    }
+
+    projRequestHandler -> projUrlResolver 'resolves route target'
+    projRequestHandler -> projMiddlewareChain 'applies middleware processing'
+    projRequestHandler -> projSignalBus 'emits request lifecycle signals'
+    projRequestHandler -> projSystemChecks 'validates configuration when needed'
   }
 
-  projEmailProvider = external 'Email Service' {
-    technology 'SMTP, SendGrid'
-    description 'External service for sending transactional emails'
-  }
-
-  projTrac = external 'Django Trac' {
-    description 'External ticket and issue tracking system for the Django project'
-  }
-
-  projGitHub = external 'GitHub Actions' {
-    description 'CI/CD environment for running tests, linters, and benchmarks'
-  }
-
-  projFontAwesome = external 'Font Awesome' {
-    technology 'SVG Icons'
-    description 'Provides iconography for the Admin Interface'
-  }
-
-  projUser -> projDjangoSystem.projWebHandler 'browses site' {
+  projWebUser -> projDjangoOrg.projStaticAssets 'uses browser UI delivered by Django apps' {
     technology 'HTTPS'
   }
-  projAdmin -> projDjangoSystem.projAdminUI 'manages application data' {
-    technology 'HTTPS'
+  projAppDeveloper -> projDjangoOrg.projCliTool 'runs administrative and project commands' {
+    technology 'CLI'
   }
-  projDeveloper -> projDjangoSystem.projWebHandler 'manages via django-admin CLI'
-  projDeveloper -> projGitHub 'pushes code and runs workflows'
-  projGitHub -> projTrac 'references tickets'
-  projDjangoSystem.projWebHandler -> projEmailProvider 'sends notifications' {
-    technology 'SMTP'
+  projOpsEngineer -> projDjangoOrg.projHttpRuntime 'deploys and operates runtime entrypoints' {
+    technology 'WSGI/ASGI'
   }
-  projDjangoSystem.projAdminUI -> projFontAwesome 'loads icons'
+  projCiMaintainer -> projGitHubActions 'configures and triggers workflow pipelines' {
+    technology 'GitHub API'
+  }
+
+  projGitHubActions -> projDjangoOrg.projCliTool 'executes test, migration, and framework command suites' {
+    technology 'Python CLI'
+  }
+  projGitHubActions -> projPostgreSql 'runs integration tests against relational backend' {
+    technology 'SQL over TCP'
+  }
+  projGitHubActions -> projPostGis 'runs geospatial test matrix for GeoDjango' {
+    technology 'SQL/PostGIS'
+  }
+  projGitHubActions -> projSphinx 'builds and lints documentation artifacts' {
+    technology 'Sphinx CLI'
+  }
+  projGitHubActions -> projNodeTooling 'runs JavaScript lint and test workflows' {
+    technology 'npm, Grunt, QUnit'
+  }
+
+  projDjangoOrg.projOrmLayer -> projPostgreSql 'connects to configured PostgreSQL backend' {
+    technology 'psycopg, SQL'
+  }
+  projDjangoOrg.projContribSuite -> projPostGis 'uses GIS database capabilities via GeoDjango' {
+    technology 'PostGIS SQL'
+  }
 }
 
 views {
   view projectContext {
     title 'System Context - Django Framework'
-    description 'High-level view of actors and external integrations for the Django ecosystem'
+    description 'Actors, Django framework boundary, and external platforms used for runtime and CI'
     include *
   }
 
-  view projectContainers of projDjangoSystem {
-    title 'Containers - Django Application'
-    description 'The internal architecture of a standard Django deployment including database and workers'
+  view projectContainers of projDjangoOrg {
+    title 'Containers - Django Framework'
+    description 'Major framework runtime containers, integrations, data stores, and internal data flow'
     include *
   }
 
-  view projectComponents of projDjangoSystem.projWebHandler {
-    title 'Components - Web Handler'
-    description 'Internal modules of the Django core handling the Request-Response lifecycle'
+  view projectComponents of projDjangoOrg.projCoreKernel {
+    title 'Components - Core Framework Kernel'
+    description 'Internal components responsible for request orchestration, routing, middleware, signaling, and checks'
     include *
   }
 }
