@@ -1,116 +1,127 @@
 model {
   projUser = actor 'Web User' {
-    description 'A user accessing web applications built with Django'
+    description 'A user accessing the web application'
   }
 
-  projDeveloper = actor 'Django Developer' {
-    description 'A developer building and maintaining Django applications'
+  projAdmin = actor 'System Administrator' {
+    description 'Manages the Django application via the Admin interface'
+  }
+
+  projDeveloper = actor 'Developer' {
+    description 'Develops and maintains the Django framework and applications'
   }
 
   projDjangoFramework = system 'Django Web Framework' {
     description 'A high-level Python web framework that encourages rapid development and clean, pragmatic design.'
 
-    projHttpServer = service 'HTTP Server' {
-      technology 'WSGI / ASGI'
-      description 'Handles incoming web requests via WSGI or ASGI protocols'
+    projWsgiServer = service 'WSGI/ASGI Server' {
+      technology 'Gunicorn, Uvicorn, Daphne'
+      description 'Web server interface for handling HTTP and WebSocket requests'
     }
 
-    projCoreHandler = service 'Core Request Handler' {
-      technology 'Python'
-      description 'The heart of Django processing requests, middleware, and routing'
+    projDjangoApp = service 'Django Application' {
+      technology 'Python 3.12+, Django'
+      description 'The core application logic, handling routing, views, and business rules'
 
-      projMiddleware = component 'Middleware Engine' {
-        description 'Processes requests and responses globally (CSRF, Sessions, Auth)'
+      projMiddleware = component 'Middleware Layer' {
+        description 'Hooks into Django request/response processing'
       }
 
       projUrlResolver = component 'URL Resolver' {
-        description 'Maps incoming URLs to the appropriate view functions'
+        description 'Maps URL patterns to view functions or classes'
       }
 
-      projViewEngine = component 'View Engine' {
-        description 'Executes business logic and returns HTTP responses'
+      projViewLayer = component 'View Layer' {
+        description 'Processes requests and returns responses using templates or serializers'
+      }
+
+      projOrm = component 'Object-Relational Mapper (ORM)' {
+        description 'Maps Python objects to database tables and handles queries'
       }
 
       projTemplateEngine = component 'Template Engine' {
-        technology 'Django Templates / Jinja2'
+        technology 'Django Templates, Jinja2'
         description 'Renders dynamic HTML content'
       }
 
-      projMiddleware -> projUrlResolver 'passes request'
-      projUrlResolver -> projViewEngine 'routes to'
-      projViewEngine -> projTemplateEngine 'uses for rendering'
+      projMiddleware -> projUrlResolver 'routes request'
+      projUrlResolver -> projViewLayer 'calls view'
+      projViewLayer -> projOrm 'queries data'
+      projViewLayer -> projTemplateEngine 'renders UI'
     }
 
-    projOrm = service 'ORM & Database Layer' {
-      technology 'Python, SQL'
-      description 'Object-Relational Mapper for database abstraction'
+    projAdminInterface = frontend 'Django Admin' {
+      technology 'Django Admin, JavaScript'
+      description 'Built-in administrative interface for managing application data'
     }
 
-    projAdminInterface = frontend 'Admin Interface' {
-      technology 'Django Admin'
-      description 'Automatic administrative interface for model management'
+    projMainDb = database 'Primary Database' {
+      technology 'PostgreSQL, MySQL, SQLite, Oracle'
+      description 'Relational database for persistent storage'
     }
 
-    projCacheSystem = cache 'Cache Framework' {
-      technology 'Redis / Memcached'
-      description 'Pluggable caching backend for performance optimization'
+    projCacheStore = cache 'Cache Layer' {
+      technology 'Redis, Memcached'
+      description 'Caching backend for performance optimization'
     }
 
-    projTaskQueue = queue 'Background Tasks' {
-      technology 'Django Tasks'
-      description 'Asynchronous task execution and scheduling'
+    projTaskQueue = queue 'Task Queue' {
+      technology 'Celery, Django Tasks'
+      description 'Handles asynchronous background processing'
     }
 
-    projHttpServer -> projCoreHandler 'forwards requests'
-    projCoreHandler -> projOrm 'queries data'
-    projCoreHandler -> projCacheSystem 'caches results'
-    projCoreHandler -> projTaskQueue 'enqueues tasks'
-    projAdminInterface -> projCoreHandler 'uses'
+    projWsgiServer -> projDjangoApp 'forwards requests'
+    projDjangoApp -> projMainDb 'reads/writes' {
+      technology 'SQL'
+    }
+    projDjangoApp -> projCacheStore 'caches data'
+    projDjangoApp -> projTaskQueue 'enqueues jobs'
+    projAdminInterface -> projDjangoApp 'uses'
   }
 
-  projDatabase = database 'Relational Database' {
-    technology 'PostgreSQL / SQLite / MySQL'
-    description 'Persistent storage for application data'
+  projExternalAuth = external 'Auth Provider' {
+    description 'External authentication services (OAuth, LDAP, etc.)'
   }
 
-  projExternalEmail = external 'Email Service' {
-    technology 'SMTP / API'
-    description 'External service for sending notifications'
+  projEmailService = external 'Email Service' {
+    technology 'SMTP, SendGrid, Amazon SES'
+    description 'Sends system notifications and user emails'
   }
 
-  projUser -> projDjangoFramework.projHttpServer 'accesses application' {
+  projStaticStorage = external 'Static/Media Storage' {
+    technology 'Amazon S3, WhiteNoise'
+    description 'Hosts static assets and user-uploaded files'
+  }
+
+  projUser -> projDjangoFramework.projWsgiServer 'accesses site' {
     technology 'HTTPS'
   }
-
-  projDeveloper -> projDjangoFramework.projAdminInterface 'manages data' {
+  projAdmin -> projDjangoFramework.projAdminInterface 'manages data' {
     technology 'HTTPS'
   }
-
-  projDjangoFramework.projOrm -> projDatabase 'reads/writes' {
-    technology 'SQL'
-  }
-
-  projDjangoFramework.projCoreHandler -> projExternalEmail 'sends mail' {
-    technology 'SMTP'
-  }
+  projDeveloper -> projDjangoFramework 'contributes to'
+  
+  projDjangoFramework.projDjangoApp -> projExternalAuth 'authenticates users'
+  projDjangoFramework.projDjangoApp -> projEmailService 'sends emails'
+  projDjangoFramework.projDjangoApp -> projStaticStorage 'serves/stores files'
 }
 
 views {
   view projectContext {
-    title 'System Context - Django Framework'
-    description 'High-level overview of the Django ecosystem and its interactions'
+    title 'System Context - Django Web Framework'
+    description 'Overview of the Django framework, its users, and external dependencies.'
     include *
   }
 
   view projectContainers of projDjangoFramework {
-    title 'Containers - Django Framework'
-    description 'The internal architecture of the Django framework'
+    title 'Containers - Django Web Framework'
+    description 'The high-level technical building blocks of a Django-based system.'
     include *
   }
 
-  view projectComponents of projDjangoFramework.projCoreHandler {
-    title 'Components - Core Request Handler'
-    description 'Internal processing pipeline within the Django core handler'
+  view projectComponents of projDjangoFramework.projDjangoApp {
+    title 'Components - Django Application'
+    description 'Internal architecture of the Django application core.'
     include *
   }
 }
