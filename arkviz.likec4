@@ -1,116 +1,205 @@
+specification {
+
+  element actor {
+    style {
+      shape person
+      color amber
+    }
+  }
+
+  element system {
+    style {
+      shape rectangle
+      color green
+    }
+  }
+
+  element frontend {
+    style {
+      shape browser
+      color sky
+    }
+  }
+
+  element service {
+    style {
+      shape rectangle
+      color blue
+    }
+  }
+
+  element database {
+    style {
+      shape storage
+      color indigo
+    }
+  }
+
+  element external {
+    style {
+      shape rectangle
+      color slate
+    }
+  }
+
+  element integration {
+    style {
+      shape rectangle
+      color secondary
+    }
+  }
+
+  element queue {
+    style {
+      shape queue
+      color amber
+    }
+  }
+
+  element cache {
+    style {
+      shape cylinder
+      color sky
+    }
+  }
+
+  element component {
+    style {
+      shape rectangle
+      color muted
+    }
+  }
+
+  element mobile {
+    style {
+      shape mobile
+      color sky
+    }
+  }
+
+}
+
 model {
-  projDeveloper = actor 'Developer' {
-    description 'Software engineer developing or contributing to the Django framework'
+  projUser = actor 'Web User' {
+    description 'A user accessing web applications built with Django'
   }
 
-  projEndUser = actor 'End User' {
-    description 'User of a web application built with the Django framework'
+  projDeveloper = actor 'Django Developer' {
+    description 'Develops and maintains applications using the Django framework'
   }
 
-  projDjangoFramework = system 'Django' {
+  projDjangoFramework = system 'Django Web Framework' {
     description 'A high-level Python web framework that encourages rapid development and clean, pragmatic design.'
 
-    projWsgiHandler = service 'WSGI Handler' {
-      technology 'Python, WSGI'
-      description 'Handles synchronous web requests via the Web Server Gateway Interface'
+    projWsgiHandler = service 'WSGI/ASGI Handler' {
+      technology 'Python, WSGI, ASGI'
+      description 'Handles incoming web requests and routes them through the middleware and view system'
 
       projMiddleware = component 'Middleware Stack' {
-        description 'Hooks into Djangos request/response processing'
+        description 'Hooks into Django request/response processing (CSRF, Sessions, Auth, Security)'
       }
+
       projUrlResolver = component 'URL Resolver' {
-        description 'Maps URL patterns to view functions'
+        description 'Maps requested URLs to the appropriate view functions or classes'
       }
-      projViewEngine = component 'View Engine' {
-        description 'Executes business logic and returns responses'
+
+      projViewSystem = component 'View System' {
+        description 'Processes requests, interacts with models, and returns responses'
       }
+
       projTemplateEngine = component 'Template Engine' {
         description 'Renders HTML using Django Templates or Jinja2'
       }
 
-      projMiddleware -> projUrlResolver 'passes request'
-      projUrlResolver -> projViewEngine 'dispatches to'
-      projViewEngine -> projTemplateEngine 'uses for rendering'
+      projMiddleware -> projUrlResolver 'routes request'
+      projUrlResolver -> projViewSystem 'calls view'
+      projViewSystem -> projTemplateEngine 'renders response'
     }
 
-    projAsgiHandler = service 'ASGI Handler' {
-      technology 'Python, ASGIRef'
-      description 'Handles asynchronous web requests via the Asynchronous Server Gateway Interface'
+    projOrm = service 'Object-Relational Mapper (ORM)' {
+      technology 'Python'
+      description 'Provides an abstraction layer for database operations using Python objects'
     }
 
-    projAdminInterface = frontend 'Admin Interface' {
+    projAdminInterface = frontend 'Django Admin' {
       technology 'Python, HTML, JavaScript'
       description 'Automatic administrative interface for managing application data'
     }
 
-    projOrm = service 'ORM' {
-      technology 'Python'
-      description 'Object-Relational Mapper for database abstraction'
-    }
-
     projCacheSystem = cache 'Cache Framework' {
-      technology 'Memcached, Redis, Database'
-      description 'Pluggable caching framework for performance optimization'
+      technology 'Redis, Memcached, Local Memory'
+      description 'Pluggable caching system for improving performance'
     }
 
-    projTaskSystem = queue 'Task System' {
+    projTaskSystem = queue 'Task Queue' {
+      technology 'Django Tasks'
+      description 'Asynchronous task execution and background processing'
+    }
+
+    projStaticFiles = service 'Static Files Handler' {
       technology 'Python'
-      description 'Internal task execution and signal dispatching'
-    }
-
-    projDatabase = database 'Primary Database' {
-      technology 'PostgreSQL, SQLite, MySQL, Oracle'
-      description 'Relational database for persistent storage'
+      description 'Manages and serves CSS, JavaScript, and image files'
     }
 
     projWsgiHandler -> projOrm 'queries data'
-    projAsgiHandler -> projOrm 'queries data'
-    projWsgiHandler -> projCacheSystem 'reads/writes'
+    projWsgiHandler -> projCacheSystem 'caches responses/data'
+    projWsgiHandler -> projTaskSystem 'triggers background tasks'
     projAdminInterface -> projWsgiHandler 'uses'
-    projOrm -> projDatabase 'executes SQL' {
-      technology 'SQL'
-    }
+    projAdminInterface -> projOrm 'manages models'
   }
 
-  projGithubActions = external 'GitHub Actions' {
-    description 'CI/CD platform for running benchmarks, tests, and linters'
+  projDatabase = database 'Relational Database' {
+    technology 'PostgreSQL, MySQL, SQLite, Oracle'
+    description 'Primary data store for Django applications'
   }
 
-  projTrac = external 'Trac' {
-    description 'Issue tracking system for the Django project'
+  projEmailService = external 'Email Service' {
+    technology 'SMTP, SendGrid, Mailgun'
+    description 'External service for sending notifications and transactional emails'
   }
 
-  projPyPi = external 'PyPI' {
-    description 'Python Package Index for distributing the framework'
+  projGisService = external 'PostGIS / Geospatial' {
+    technology 'PostGIS, GDAL, PROJ'
+    description 'Spatial database extensions and libraries for GeoDjango'
   }
 
-  projEndUser -> projDjangoFramework.projWsgiHandler 'accesses app' {
+  projUser -> projDjangoFramework.projWsgiHandler 'accesses web app' {
     technology 'HTTPS'
   }
-  projEndUser -> projDjangoFramework.projAdminInterface 'manages data' {
+
+  projUser -> projDjangoFramework.projAdminInterface 'manages data' {
     technology 'HTTPS'
   }
-  projDeveloper -> projGithubActions 'triggers workflows'
-  projDeveloper -> projTrac 'reports bugs'
-  projGithubActions -> projDjangoFramework 'tests and builds'
-  projDjangoFramework -> projPyPi 'published to'
+
+  projDeveloper -> projDjangoFramework 'builds applications'
+
+  projDjangoFramework.projOrm -> projDatabase 'reads/writes' {
+    technology 'SQL'
+  }
+
+  projDjangoFramework.projWsgiHandler -> projEmailService 'sends emails' {
+    technology 'SMTP/HTTPS'
+  }
+
+  projDjangoFramework.projOrm -> projGisService 'spatial queries'
 }
 
 views {
   view projectContext {
-    title 'System Context - Django Framework'
-    description 'Overview of the Django framework, its users, and external ecosystem'
+    title 'System Context - Django Web Framework'
+    description 'Overview of the Django framework, its users, and external dependencies'
     include *
   }
 
   view projectContainers of projDjangoFramework {
-    title 'Containers - Django Framework'
-    description 'Internal architecture of the Django framework showing core handlers and subsystems'
+    title 'Containers - Django Web Framework'
+    description 'Internal architecture of the Django framework showing core services and data flow'
     include *
   }
 
   view projectComponents of projDjangoFramework.projWsgiHandler {
-    title 'Components - WSGI Handler'
-    description 'Internal components of the WSGI request handling pipeline'
+    title 'Components - WSGI/ASGI Handler'
+    description 'Internal modules within the request handling pipeline'
     include *
   }
 }
