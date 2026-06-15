@@ -99,139 +99,131 @@ specification {
 
 model {
   projUser = actor 'Web User' {
-    description 'A user interacting with the Django-based web application'
+    description 'A user interacting with a Django-based web application'
   }
 
   projAdmin = actor 'Site Administrator' {
-    description 'Manages application content and users via the Django Admin interface'
+    description 'Manages site content and users via the Django Admin interface'
   }
 
-  projDjangoFramework = system 'Django Framework' {
-    description 'A high-level Python web framework that encourages rapid development and clean design.'
+  projDjangoFramework = system 'Django' {
+    description 'A high-level Python web framework that encourages rapid development and clean, pragmatic design.'
 
-    projWsgiAsgiHandler = service 'Request Handler (WSGI/ASGI)' {
-      technology 'Python, ASGIRef'
-      description 'Entry point for web servers to communicate with the Django application'
+    projWsgiHandler = service 'WSGI/ASGI Handler' {
+      technology 'Python, WSGI, ASGI'
+      description 'Handles incoming web requests and routes them through the middleware and view system.'
       metadata {
         sourceFiles 'django/core/handlers/wsgi.py, django/core/asgi.py, django/core/handlers/asgi.py'
       }
 
       projMiddleware = component 'Middleware Stack' {
-        description 'Hooks into Django request/response processing'
+        description 'Hooks into Djangos request/response processing for security, sessions, and common tasks.'
         metadata {
-          sourceFiles 'django/middleware/common.py, django/middleware/csrf.py, django/contrib/sessions/middleware.py'
+          sourceFiles 'django/middleware/security.py, django/middleware/csrf.py, django/middleware/sessions.py'
         }
       }
 
       projUrlResolver = component 'URL Resolver' {
-        description 'Maps requested URLs to the appropriate view functions'
+        description 'Maps requested URLs to the appropriate view functions or classes.'
         metadata {
           sourceFiles 'django/urls/resolvers.py, django/urls/base.py'
         }
       }
 
-      projViewEngine = component 'View Engine' {
-        description 'Processes logic and returns HTTP responses'
+      projViewSystem = component 'View System' {
+        description 'Processes requests and returns HTTP responses, often using templates.'
         metadata {
-          sourceFiles 'django/views/generic/base.py, django/views/generic/list.py'
+          sourceFiles 'django/views/generic/base.py, django/shortcuts.py'
         }
       }
 
       projTemplateEngine = component 'Template Engine' {
-        description 'Renders HTML using Django or Jinja2 templates'
+        description 'Renders HTML or other formats using Django or Jinja2 templates.'
         metadata {
           sourceFiles 'django/template/engine.py, django/template/backends/django.py'
         }
       }
 
       projMiddleware -> projUrlResolver 'routes request'
-      projUrlResolver -> projViewEngine 'calls view'
-      projViewEngine -> projTemplateEngine 'renders'
+      projUrlResolver -> projViewSystem 'calls view'
+      projViewSystem -> projTemplateEngine 'renders'
     }
 
     projOrm = service 'Object-Relational Mapper (ORM)' {
-      technology 'Python, SQLParse'
-      description 'Maps database tables to Python classes and handles queries'
+      technology 'Python, SQL'
+      description 'Provides an abstraction layer for database operations using Python models.'
       metadata {
-        sourceFiles 'django/db/models/base.py, django/db/models/query.py, django/db/models/manager.py'
+        sourceFiles 'django/db/models/base.py, django/db/models/query.py'
       }
     }
 
-    projAdminInterface = frontend 'Admin Interface' {
-      technology 'Django Templates, JavaScript'
-      description 'Built-in administrative interface for managing models'
+    projAdminInterface = service 'Admin Interface' {
+      technology 'Python, HTML, JavaScript'
+      description 'A built-in, automated administrative interface for managing application data.'
       metadata {
-        sourceFiles 'django/contrib/admin/sites.py, django/contrib/admin/options.py'
+        sourceFiles 'django/contrib/admin/options.py, django/contrib/admin/sites.py'
       }
     }
 
     projAuthSystem = service 'Authentication System' {
-      technology 'Python, Argon2, Bcrypt'
-      description 'Handles user authentication, permissions, and sessions'
+      technology 'Python'
+      description 'Handles user authentication, permissions, and groups.'
       metadata {
-        sourceFiles 'django/contrib/auth/models.py, django/contrib/auth/backends.py, django/contrib/sessions/models.py'
-      }
-    }
-
-    projDatabase = database 'Relational Database' {
-      technology 'PostgreSQL, SQLite, MySQL, Oracle'
-      description 'Stores application data, user accounts, and sessions'
-      metadata {
-        sourceFiles 'django/db/backends/utils.py'
+        sourceFiles 'django/contrib/auth/models.py, django/contrib/auth/backends.py'
       }
     }
 
     projCacheSystem = cache 'Cache Framework' {
-      technology 'Redis, Memcached, Local Memory'
-      description 'Pluggable caching backend for performance optimization'
+      technology 'Memcached, Redis, Database'
+      description 'A robust cache system for storing expensive computations or database results.'
       metadata {
         sourceFiles 'django/core/cache/__init__.py'
       }
     }
 
-    projWsgiAsgiHandler -> projOrm 'queries data'
-    projWsgiAsgiHandler -> projAuthSystem 'authenticates users'
-    projWsgiAsgiHandler -> projCacheSystem 'caches responses'
-    projAdminInterface -> projWsgiAsgiHandler 'uses'
+    projDatabase = database 'Relational Database' {
+      technology 'PostgreSQL, MySQL, SQLite, Oracle'
+      description 'Stores application data, user accounts, and sessions.'
+      metadata {
+        sourceFiles 'django/db/backends/utils.py'
+      }
+    }
+
+    projWsgiHandler -> projOrm 'queries data'
+    projWsgiHandler -> projAuthSystem 'authenticates users'
+    projWsgiHandler -> projCacheSystem 'reads/writes cache'
+    projAdminInterface -> projOrm 'manages data'
     projOrm -> projDatabase 'executes SQL' {
       technology 'SQL'
     }
-    projAuthSystem -> projOrm 'persists users'
   }
 
-  projEmailService = external 'Email Service' {
-    description 'External SMTP or API-based email delivery'
+  projExternalMail = external 'Email Service' {
+    description 'External SMTP or API-based email delivery service'
   }
 
-  projGeoService = external 'GeoIP/GIS' {
-    technology 'GDAL, PROJ'
-    description 'Geospatial data services'
-    metadata {
-      sourceFiles 'django/contrib/gis/geoip2.py'
-    }
+  projDjangoFramework.projWsgiHandler -> projExternalMail 'sends emails' {
+    technology 'SMTP/HTTPS'
   }
 
-  projUser -> projDjangoFramework.projWsgiAsgiHandler 'accesses web app' {
+  projUser -> projDjangoFramework.projWsgiHandler 'accesses application' {
     technology 'HTTPS'
   }
+
   projAdmin -> projDjangoFramework.projAdminInterface 'manages site' {
     technology 'HTTPS'
   }
-  projDjangoFramework.projWsgiAsgiHandler -> projEmailService 'sends notifications' {
-    technology 'SMTP/HTTPS'
-  }
-  projDjangoFramework.projWsgiAsgiHandler -> projGeoService 'resolves locations'
 }
 
 deployment {
   projProdEnv = environment 'Production' {
-    projAppZone = zone 'Application Server' {
-      projWebNode = node 'Gunicorn/Uvicorn' {
-        instanceOf projDjangoFramework.projWsgiAsgiHandler
+    projAppZone = zone 'Application Cluster' {
+      projWebServer = node 'Web Server (Gunicorn/Uvicorn)' {
+        instanceOf projDjangoFramework.projWsgiHandler
       }
     }
     projDataZone = zone 'Database Cluster' {
-      projDbNode = node 'PostgreSQL Instance' {
+      projDbNode = node 'Managed PostgreSQL' {
         instanceOf projDjangoFramework.projDatabase
       }
     }
@@ -241,19 +233,19 @@ deployment {
 views {
   view projectContext {
     title 'System Context - Django Framework'
-    description 'Overview of the Django framework, its users, and external integrations.'
+    description 'High-level overview of the Django framework and its interactions with users and external systems.'
     include *
   }
 
   view projectContainers of projDjangoFramework {
     title 'Containers - Django Framework'
-    description 'The core internal containers of the Django framework including the ORM, Auth, and Admin.'
+    description 'Internal services and data stores that make up the Django framework.'
     include *
   }
 
-  view projectComponents of projDjangoFramework.projWsgiAsgiHandler {
+  view projectComponents of projDjangoFramework.projWsgiHandler {
     title 'Components - Request Handler'
-    description 'Internal request processing pipeline within Django core handlers.'
+    description 'Internal components of the WSGI/ASGI request handling pipeline.'
     include *
   }
 
