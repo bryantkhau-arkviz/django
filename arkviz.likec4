@@ -106,20 +106,20 @@ model {
     description 'Interacts with web applications built on Django'
   }
 
-  projDjangoFramework = system 'Django Web Framework' {
+  projDjangoFramework = system 'Django Framework' {
     description 'A high-level Python web framework that encourages rapid development and clean, pragmatic design.'
 
-    projHttpHandler = service 'HTTP Handler' {
-      technology 'Python, WSGI/ASGI'
-      description 'Handles incoming HTTP requests via WSGI or ASGI interfaces'
+    projWsgiHandler = service 'WSGI/ASGI Handler' {
+      technology 'Python, WSGI, ASGI'
+      description 'Entry point for web servers to communicate with the Django application'
       metadata {
-        sourceFiles 'django/core/handlers/wsgi.py, django/core/handlers/asgi.py, django/core/handlers/base.py'
+        sourceFiles 'django/core/handlers/wsgi.py, django/core/asgi.py, django/core/handlers/asgi.py'
       }
 
-      projMiddleware = component 'Middleware Manager' {
-        description 'Processes requests and responses through a chain of middleware'
+      projMiddleware = component 'Middleware Stack' {
+        description 'Hooks into Django request/response processing'
         metadata {
-          sourceFiles 'django/core/handlers/base.py, django/middleware/common.py'
+          sourceFiles 'django/middleware/common.py, django/middleware/csrf.py, django/middleware/security.py'
         }
       }
 
@@ -131,19 +131,19 @@ model {
       }
 
       projViewEngine = component 'View Engine' {
-        description 'Executes business logic and returns HTTP responses'
+        description 'Processes requests and returns HTTP responses'
         metadata {
-          sourceFiles 'django/views/generic/base.py, django/views/generic/list.py'
+          sourceFiles 'django/views/generic/base.py, django/core/handlers/base.py'
         }
       }
 
       projMiddleware -> projUrlResolver 'routes request'
-      projUrlResolver -> projViewEngine 'dispatches to'
+      projUrlResolver -> projViewEngine 'invokes'
     }
 
     projOrm = service 'Object-Relational Mapper (ORM)' {
       technology 'Python, SQL'
-      description 'Maps Python models to database tables and handles queries'
+      description 'Maps database tables to Python classes and handles queries'
       metadata {
         sourceFiles 'django/db/models/base.py, django/db/models/query.py, django/db/models/manager.py'
       }
@@ -151,15 +151,15 @@ model {
 
     projTemplateEngine = service 'Template Engine' {
       technology 'Django Templates, Jinja2'
-      description 'Renders dynamic HTML content using templates'
+      description 'Generates HTML dynamically using template files'
       metadata {
         sourceFiles 'django/template/engine.py, django/template/backends/django.py, django/template/backends/jinja2.py'
       }
     }
 
     projAdminInterface = frontend 'Admin Interface' {
-      technology 'HTML, CSS, JavaScript'
-      description 'Automatic administrative interface for managing site content'
+      technology 'Python, HTML, JavaScript'
+      description 'Built-in administration interface for managing site content'
       metadata {
         sourceFiles 'django/contrib/admin/sites.py, django/contrib/admin/options.py'
       }
@@ -167,100 +167,103 @@ model {
 
     projManagementCli = service 'Management CLI' {
       technology 'Python'
-      description 'Command-line utility for administrative tasks'
+      description 'Command-line utility for administrative tasks like migrations'
       metadata {
         sourceFiles 'django/core/management/__init__.py, django/core/management/base.py'
       }
     }
 
-    projCacheSystem = cache 'Cache Framework' {
-      technology 'Redis, Memcached, Database, Local Memory'
-      description 'Pluggable caching system for performance optimization'
+    projAuthSystem = service 'Authentication System' {
+      technology 'Python'
+      description 'Handles user accounts, groups, permissions and sessions'
       metadata {
-        sourceFiles 'django/core/cache/__init__.py, django/core/cache/backends/base.py'
+        sourceFiles 'django/contrib/auth/models.py, django/contrib/auth/backends.py, django/contrib/sessions/middleware.py'
       }
     }
 
-    projTaskSystem = queue 'Task System' {
+    projTaskQueue = queue 'Task Queue' {
       technology 'Python'
-      description 'Backend-agnostic task execution framework'
+      description 'Asynchronous task execution framework'
       metadata {
         sourceFiles 'django/tasks/base.py, django/tasks/backends/base.py'
       }
     }
 
-    projHttpHandler -> projOrm 'queries data'
-    projHttpHandler -> projTemplateEngine 'renders views'
-    projHttpHandler -> projCacheSystem 'caches responses'
-    projAdminInterface -> projHttpHandler 'submits requests'
-    projManagementCli -> projOrm 'manages schema/data'
-    projManagementCli -> projHttpHandler 'runs development server'
+    projWsgiHandler -> projOrm 'queries data'
+    projWsgiHandler -> projTemplateEngine 'renders'
+    projWsgiHandler -> projAuthSystem 'authenticates'
+    projAdminInterface -> projWsgiHandler 'uses'
+    projManagementCli -> projOrm 'manages schema'
+    projWsgiHandler -> projTaskQueue 'dispatches tasks'
   }
 
-  projDatabase = database 'Relational Database' {
-    technology 'PostgreSQL, MySQL, SQLite, Oracle'
-    description 'Stores application data'
+  projPostgres = database 'PostgreSQL' {
+    technology 'PostgreSQL'
+    description 'Primary relational database'
   }
 
-  projEmailService = external 'Email Service' {
-    technology 'SMTP'
-    description 'External service for sending emails'
+  projRedis = cache 'Redis' {
+    technology 'Redis'
+    description 'Cache and session store'
   }
 
-  projGisService = external 'GeoSpatial Services' {
-    technology 'GDAL, PROJ, GEOS'
-    description 'External libraries for geographic data processing'
+  projEmailProvider = external 'Email Service' {
+    description 'External SMTP or API service for sending emails'
   }
 
-  projEndUser -> projDjangoFramework.projHttpHandler 'accesses web app' {
-    technology 'HTTPS'
+  projDeveloper -> projDjangoFramework.projManagementCli 'runs commands'
+  projDeveloper -> projDjangoFramework.projAdminInterface 'manages data'
+  projEndUser -> projDjangoFramework.projWsgiHandler 'accesses web app' {
+    technology 'HTTP/HTTPS'
   }
-  projDeveloper -> projDjangoFramework.projManagementCli 'manages project' {
-    technology 'Shell'
-  }
-  projDjangoFramework.projOrm -> projDatabase 'reads/writes' {
+
+  projDjangoFramework.projOrm -> projPostgres 'reads/writes' {
     technology 'SQL'
   }
-  projDjangoFramework.projHttpHandler -> projEmailService 'sends mail' {
-    technology 'SMTP'
-  }
-  projDjangoFramework.projHttpHandler -> projGisService 'processes spatial data'
+  projDjangoFramework.projWsgiHandler -> projRedis 'caches data'
+  projDjangoFramework.projWsgiHandler -> projEmailProvider 'sends notifications'
 }
 
 deployment {
-  projCI = environment 'GitHub Actions' {
-    projTestRunner = node 'Test Runner' {
-      instanceOf projDjangoFramework.projManagementCli
+  projProdEnv = environment 'Production' {
+    projAppZone = zone 'Application Cluster' {
+      projAppNode = node 'Gunicorn/Uvicorn Worker' {
+        instanceOf projDjangoFramework.projWsgiHandler
+      }
     }
-    projPostgresNode = node 'PostgreSQL Service' {
-      instanceOf projDatabase
+    projDbZone = zone 'Database Cluster' {
+      projDbNode = node 'Managed PostgreSQL' {
+        instanceOf projPostgres
+      }
     }
-    projTestRunner -> projPostgresNode 'runs migrations and tests'
+    projCacheNode = node 'Managed Redis' {
+      instanceOf projRedis
+    }
   }
 }
 
 views {
   view projectContext {
-    title 'System Context - Django Web Framework'
+    title 'System Context - Django Framework'
     description 'High-level overview of the Django framework and its environment'
     include *
   }
 
   view projectContainers of projDjangoFramework {
-    title 'Containers - Django Web Framework'
-    description 'Internal services and subsystems of the Django framework'
+    title 'Containers - Django Framework'
+    description 'The core architectural building blocks of the Django framework'
     include *
   }
 
-  view projectComponents of projDjangoFramework.projHttpHandler {
-    title 'Components - HTTP Handler'
-    description 'Internal request processing pipeline within the HTTP Handler'
+  view projectComponents of projDjangoFramework.projWsgiHandler {
+    title 'Components - Request Handler'
+    description 'Internal processing pipeline for web requests'
     include *
   }
 
   deployment view projectDeployment {
-    title 'Deployment - CI Environment'
-    description 'How Django is tested in the GitHub Actions CI pipeline'
+    title 'Deployment - Django Application'
+    description 'Standard production deployment pattern for Django'
     include *
   }
 }
